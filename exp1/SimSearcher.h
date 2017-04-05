@@ -72,7 +72,7 @@ public:
 	int createED(char *item, int id);
 	int createJCD(char *item, int id);
 
-	int calED(const char *query, char* entry, int th);
+	int calED(const char *query, const char* entry, int th);
 
 	int q;
 

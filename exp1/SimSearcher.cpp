@@ -3,10 +3,13 @@
 using namespace std;
 
 #define getMin(a,b,c) (min(min(a,b),c))
+#define MAX_NUM 1000000
+#define DIS_SIZE 4096
 
 string string_buf;
 char* buffer;
 int dis[4096][4096];
+int candidate_count[MAX_NUM];
 
 bool operator<(const Qgram& a,const Qgram& b)
 {
@@ -117,38 +120,78 @@ int SimSearcher::createIndex(const char *filename, unsigned q)
 	}
 	
 	fin.close();
+
+	for (int i = 0; i < DIS_SIZE; i++)
+		dis[i][0] = i;
+	for (int j = 0; j < DIS_SIZE; j++)
+		dis[0][j] = j;
+
 	return SUCCESS;
 }
 
-int SimSearcher::calED(const char *query, char* entry, int th)
+int SimSearcher::calED(const char *query, const char* entry, int th)
 {
 	//cout << "calED" << "\n";
-	string t = query;
-	int lent = t.length();
-	string s = entry;
-	int lens = s.length();
+	const char* t = query;
+	int lent = strlen(t);
+	const char* s = entry;
+	int lens = strlen(s);
+	if(abs(lens - lent) > th)
+		return MAX_NUM;
+	if(lens > lent)
+		return calED(entry, query, th);
 	//cout << t << " & " << s << "\n";
 	/*
 	for (int i = 0; i < lens + 1; i++)
 		dis[i] = new int[lent + 1];
 	*/
-	for (int i = 0; i <= lens; i++)
-		dis[i][0] = i;
-	for (int j = 0; j <= lent; j++)
-		dis[0][j] = j;
+	bool flag = false;
+	
 	for (int i = 1; i <= lens; i++)
 	{
-		for (int j = 1; j <= lent; j++)
+		int lo = max(1,i-th);
+		int hi = min(lent,i+th);
+		for (int j = lo; j <= hi; j++)
 		{
 			int tij = (s[i - 1] == t[j - 1]) ? 0 : 1;
-			dis[i][j] = getMin(dis[i - 1][j] + 1,
+			//dis[i][j] = dis[i-1][j-1] + tij;
+			
+			if(j == i-th)
+			{
+				dis[i][j] = min(dis[i - 1][j] + 1,
+	            			   dis[i - 1][j - 1] + tij);
+			}
+			else if(j == i+th)
+			{
+				dis[i][j] = min(dis[i][j - 1] + 1,
+	            			   dis[i - 1][j - 1] + tij);
+			}
+			else
+			{
+				dis[i][j] = getMin(dis[i - 1][j] + 1,
 	            			   dis[i][j - 1] + 1,
 	            			   dis[i - 1][j - 1] + tij);
+			}
+			/*
+			if(j > i-th)
+			{
+				dis[i][j] = min(dis[i][j],dis[i][j-1] + 1);
+			}
+			if(j < i+th)
+			{
+				dis[i][j] = min(dis[i][j],dis[i-1][j] + 1);
+			}
+			*/
+			if(i == lens && j == lent)
+				flag = true;
 		}
 	}
 	int ed = dis[lens][lent];
 	//cout << "calED result:" << ed << "\n";
-	return ed;
+	if(flag)
+		return ed;
+	else
+		return MAX_NUM;
 }
 
 int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<unsigned, double> > &result)
@@ -169,12 +212,11 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 
 	//cout << th << endl;
 
-	const unsigned COUNT_SIZE = word_vec.size() + 100;
-	int count[COUNT_SIZE];
+	//const unsigned COUNT_SIZE = word_vec.size() + 100;
 
-	for(unsigned i = 0;i < COUNT_SIZE;i++)
+	for(unsigned i = 0;i < word_vec.size() + 100;i++)
 	{
-		count[i] = 0;
+		candidate_count[i] = 0;
 	}
 
 	vector<int> candidate;
@@ -191,8 +233,8 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 			vector<int>& inverted_list_entry = inverted_list[j->index];
 			for(vector<int>::iterator k = inverted_list_entry.begin();k != inverted_list_entry.end();++k)
 			{
-				count[*k]++;
-				if(count[*k] == th)
+				candidate_count[*k]++;
+				if(candidate_count[*k] == th)
 				{
 					candidate.push_back(*k);
 				}

@@ -6,6 +6,7 @@ using namespace std;
 
 string string_buf;
 char* buffer;
+int dis[4096][4096];
 
 bool operator<(const Qgram& a,const Qgram& b)
 {
@@ -32,11 +33,12 @@ int SimSearcher::createEntry(char* item, int id)
 	Entry e;
 	e.word = new_word;
 	e.id = id;
+	e.length = (int)strlen(new_word);
 	word_vec.push_back(e);
 
 	vector<char*> qgrams;
 	//cout << "generateQgrams:" << item << endl;
-	generateQgrams(item,qgrams);
+	generateQgrams(item,e.length,qgrams);
 	for(vector<char*>::iterator it = qgrams.begin();it != qgrams.end();++it)
 	{
 		insertInvertedList(*it,id);
@@ -45,11 +47,11 @@ int SimSearcher::createEntry(char* item, int id)
 	return SUCCESS;
 }
 
-int SimSearcher::generateQgrams(const char* word, vector<char*>& qgrams)
+int SimSearcher::generateQgrams(const char* word, int word_length, vector<char*>& qgrams)
 {
 	qgrams.clear();
 	int i = 0;
-	int len = strlen(word);
+	int len = word_length;
 	while(i + q - 1 < len)
 	{
 		char* qgram_entry = new char[this->q + 1];
@@ -126,7 +128,6 @@ int SimSearcher::calED(const char *query, char* entry, int th)
 	string s = entry;
 	int lens = s.length();
 	//cout << t << " & " << s << "\n";
-	int dis[4096][lent+1];
 	/*
 	for (int i = 0; i < lens + 1; i++)
 		dis[i] = new int[lent + 1];
@@ -161,9 +162,9 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 {
 	result.clear();
 	vector<char*> query_qgrams;
-	generateQgrams(query,query_qgrams);
-
 	int len = strlen(query);
+	generateQgrams(query,len,query_qgrams);
+
 	int th = len - q + 1 - q * threshold;
 
 	//cout << th << endl;
@@ -217,7 +218,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 		for(vector<Entry>::iterator it = word_vec.begin();it != word_vec.end();++it)
 		{
 			char* candidate_word = it->word;
-			if(abs((int)strlen(candidate_word) - len) > threshold)
+			if(abs(it->length - len) > threshold)
 				continue;
 			int ed = calED(query,candidate_word,threshold);
 			//cout << candidate_word << " " << ed << endl;

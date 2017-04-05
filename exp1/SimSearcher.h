@@ -23,6 +23,7 @@ struct Entry
 {
 	char* word;
 	int id;//word id
+	int length;
 };
 
 struct Qgram
@@ -66,7 +67,7 @@ public:
 	int searchED(const char *query, unsigned threshold, std::vector<std::pair<unsigned, unsigned> > &result);
 
 	int createEntry(char* item, int id);
-	int generateQgrams(const char* word, std::vector<char*>& qgrams);
+	int generateQgrams(const char* word, int word_length, std::vector<char*>& qgrams);
 	int insertInvertedList(char* qgram, int id);
 	int createED(char *item, int id);
 	int createJCD(char *item, int id);

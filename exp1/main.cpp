@@ -15,7 +15,8 @@ int main(int argc, char **argv)
 	searcher.createIndex(argv[1], q);
 	//searcher.searchJaccard("query", jaccardThreshold, resultJaccard);
 	searcher.searchED("shtick", edThreshold, resultED);
-
+	searcher.printDebug(resultED);
+	searcher.searchED("srick", edThreshold, resultED);
 	searcher.printDebug(resultED);
 	return 0;
 }

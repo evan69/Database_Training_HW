@@ -158,21 +158,15 @@ int SimSearcher::calED(const char *query, const char* entry, int th)
 		return MAX_NUM;
 	if(lens > lent)
 		return calED(entry, query, th);
-	//cout << t << " & " << s << "\n";
-	/*
-	for (int i = 0; i < lens + 1; i++)
-		dis[i] = new int[lent + 1];
-	*/
-	bool flag = false;
 	
 	for (int i = 1; i <= lens; i++)
 	{
 		int lo = max(1,i-th);
 		int hi = min(lent,i+th);
+		bool flag = true;
 		for (int j = lo; j <= hi; j++)
 		{
 			int tij = (s[i - 1] == t[j - 1]) ? 0 : 1;
-			//dis[i][j] = dis[i-1][j-1] + tij;
 			
 			if(j == i-th)
 			{
@@ -190,6 +184,8 @@ int SimSearcher::calED(const char *query, const char* entry, int th)
 	            			   dis[i][j - 1] + 1,
 	            			   dis[i - 1][j - 1] + tij);
 			}
+			if(dis[i][j] <= th)
+				flag = false;
 			/*
 			if(j > i-th)
 			{
@@ -200,16 +196,13 @@ int SimSearcher::calED(const char *query, const char* entry, int th)
 				dis[i][j] = min(dis[i][j],dis[i-1][j] + 1);
 			}
 			*/
-			if(i == lens && j == lent)
-				flag = true;
+			//if(i == lens && j == lent)
+				//flag = true;
 		}
+		if(flag)
+			return MAX_NUM;
 	}
-	int ed = dis[lens][lent];
-	//cout << "calED result:" << ed << "\n";
-	if(flag)
-		return ed;
-	else
-		return MAX_NUM;
+	return dis[lens][lent];
 }
 
 int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<unsigned, double> > &result)
@@ -224,23 +217,24 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 	result.clear();
 	vector<char*> query_qgrams;
 	int len = strlen(query);
-	generateQgrams(query,len,query_qgrams);
-
 	int th = len - q + 1 - q * threshold;
 
 	//cout << th << endl;
 
 	//const unsigned COUNT_SIZE = word_vec.size() + 100;
 
-	for(unsigned i = 0;i < word_vec.size() + 100;i++)
+	
+	//if(th > 0)
+	if(false)
 	{
-		candidate_count[i] = 0;
-	}
+		generateQgrams(query,len,query_qgrams);
+		for(unsigned i = 0;i < word_vec.size() + 100;i++)
+		{
+			candidate_count[i] = 0;
+		}
 
-	vector<int> candidate;
-	Qgram q;
-	if(th > 0)
-	{
+		vector<int> candidate;
+		Qgram q;
 		for(vector<char*>::iterator it = query_qgrams.begin();it != query_qgrams.end();++it)
 		{
 			q.qgram = *it;

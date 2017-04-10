@@ -6,10 +6,28 @@ using namespace std;
 #define MAX_NUM 1000000
 #define DIS_SIZE 4096
 
+struct Entry
+{
+	char* word;
+	int id;//word id
+	int length;
+};
+
+struct Qgram
+{
+	char* qgram;
+	int index;//inverted list index
+};
+
 string string_buf;
 char* buffer;
 int dis[4096][4096];
 int candidate_count[MAX_NUM];
+
+vector<Entry> word_vec;
+vector<vector<int> > inverted_list;
+set<Qgram> qgram_set;
+
 
 bool operator<(const Qgram& a,const Qgram& b)
 {

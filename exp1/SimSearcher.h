@@ -19,19 +19,6 @@ const int FAILURE = 1;
 
 const int LIST_BEGIN_FLAG = -1;
 
-struct Entry
-{
-	char* word;
-	int id;//word id
-	int length;
-};
-
-struct Qgram
-{
-	char* qgram;
-	int index;//inverted list index
-};
-
 /*
 struct InvertedListItem
 {
@@ -75,11 +62,6 @@ public:
 	int calED(const char *query, const char* entry, int th);
 
 	int q;
-
-	std::vector<Entry> word_vec;
-	std::vector<std::vector<int> > inverted_list;
-	std::set<Qgram> qgram_set;
-
 	void printDebug(std::vector<std::pair<unsigned, unsigned> > &result);
 };
 

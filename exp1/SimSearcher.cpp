@@ -25,9 +25,13 @@ int dis[4096][4096];
 int candidate_count[MAX_NUM];
 
 vector<Entry> word_vec;
+vector<int> word_num;
 vector<vector<int> > inverted_list;
+vector<vector<int> > word_inverted_list;
 set<Qgram> qgram_set;
+set<Qgram> word_set;
 
+int smin = MAX_NUM;
 
 bool operator<(const Qgram& a,const Qgram& b)
 {
@@ -36,6 +40,33 @@ bool operator<(const Qgram& a,const Qgram& b)
 bool operator==(const Qgram& a,const Qgram& b)
 {
 	return strcmp(a.qgram, b.qgram) == 0;
+}
+
+void scanCount(vector<vector<int> >& para_inverted_list,set<Qgram>& para_qgram_set,vector<char*>& query_qgrams,
+	int th,vector<int>& candidate)
+{
+	candidate.clear();
+	for(unsigned i = 0;i < word_vec.size() + 100;i++)
+	{
+		candidate_count[i] = 0;
+	}
+    Qgram q;
+	for(vector<char*>::iterator it = query_qgrams.begin();it != query_qgrams.end();++it)
+	{
+		q.qgram = *it;
+		set<Qgram>::iterator j = para_qgram_set.find(q);
+		if(j == para_qgram_set.end())
+			continue;
+		vector<int>& inverted_list_entry = para_inverted_list[j->index];
+		for(vector<int>::iterator k = inverted_list_entry.begin();k != inverted_list_entry.end();++k)
+		{
+			candidate_count[*k]++;
+			if(candidate_count[*k] == th)
+			{
+				candidate.push_back(*k);
+			}
+		}
+	}
 }
 
 SimSearcher::SimSearcher()
@@ -49,6 +80,7 @@ SimSearcher::~SimSearcher()
 int SimSearcher::createEntry(char* item, int id)
 {
 	assert(id == (int)word_vec.size());
+	assert(id == (int)word_num.size());
 	char* new_word = new char[4096];
 	strcpy(new_word,item);
 	Entry e;
@@ -65,6 +97,21 @@ int SimSearcher::createEntry(char* item, int id)
 		insertInvertedList(*it,id);
 	}
 	//cout << "end generateQgrams" << endl;
+
+	vector<string> words;
+	splitWord(item,' ',words);
+	word_num.push_back((int)words.size());
+	smin = smin > (int)words.size() ? (int)words.size() : smin;
+	for(vector<string>::iterator it = words.begin();it != words.end();++it)
+	{
+		char* add = new char[it->length() + 10];
+		for(unsigned j = 0;j < it->length();j++)
+		{
+			add[j] = (*it)[j];
+		}
+		add[it->length()] = '\0';
+		insertWordInvertedList(add,id);//for Jac
+	}
 	return SUCCESS;
 }
 
@@ -85,6 +132,29 @@ int SimSearcher::generateQgrams(const char* word, int word_length, vector<char*>
 		i++;
 	}
 	return SUCCESS;
+}
+
+int SimSearcher::splitWord(const char* line, char c, vector<string>& words)
+{
+	string str = string(line);
+	int len = str.length();
+    int start = 0;
+    for(int i = 0;i<len;i++)
+    {
+        if(str[i] == c)
+        {
+            words.push_back(str.substr(start,i-start));
+            while(str[i+1] == c)
+            {
+                i++;
+            }
+            start = i+1;
+        }
+    }
+    words.push_back(str.substr(start,len-start));
+    sort(words.begin(),words.end());
+    words.erase(unique(words.begin(),words.end()),words.end());
+    return SUCCESS;
 }
 
 int SimSearcher::insertInvertedList(char* qgram, int id)
@@ -109,13 +179,24 @@ int SimSearcher::insertInvertedList(char* qgram, int id)
 	return SUCCESS;
 }
 
-int SimSearcher::createED(char *item, int id)
+int SimSearcher::insertWordInvertedList(char* item, int id)
 {
-	return SUCCESS;
-}
-
-int SimSearcher::createJCD(char *item, int id)
-{
+	int new_index = word_inverted_list.size();
+	Qgram new_word;
+	new_word.qgram = item;
+	new_word.index = new_index;
+	set<Qgram>::iterator it = word_set.find(new_word);
+	if(it == word_set.end())
+	{
+		word_inverted_list.push_back(vector<int>());
+		word_set.insert(new_word);
+		insertWordInvertedList(item,id);
+	}
+	else
+	{
+		int index = it->index;
+		word_inverted_list[index].push_back(id);
+	}
 	return SUCCESS;
 }
 
@@ -186,18 +267,6 @@ int SimSearcher::calED(const char *query, const char* entry, int th)
 			}
 			if(dis[i][j] <= th)
 				flag = false;
-			/*
-			if(j > i-th)
-			{
-				dis[i][j] = min(dis[i][j],dis[i][j-1] + 1);
-			}
-			if(j < i+th)
-			{
-				dis[i][j] = min(dis[i][j],dis[i-1][j] + 1);
-			}
-			*/
-			//if(i == lens && j == lent)
-				//flag = true;
 		}
 		if(flag)
 			return MAX_NUM;
@@ -208,7 +277,49 @@ int SimSearcher::calED(const char *query, const char* entry, int th)
 int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<unsigned, double> > &result)
 {
 	result.clear();
-	exit(-1);
+    vector<string> str_words;
+    splitWord(query,' ',str_words);
+
+    vector<char*> words;
+    for(vector<string>::iterator it = str_words.begin();it != str_words.end();it++)
+    {
+		char* tmp = new char[it->length() + 10];
+		for(unsigned j = 0;j < it->length();j++)
+		{
+			tmp[j] = (*it)[j];
+		}
+		tmp[it->length()] = '\0';
+		words.push_back(tmp);
+    }
+
+    vector<int> candidate;
+    int word_size = words.size();
+    int T = max(threshold*word_size,(smin+word_size)*threshold/(threshold+1));
+    scanCount(word_inverted_list,word_set,words,T,candidate);
+    sort(candidate.begin(),candidate.end());
+    if(T > 0)
+    {
+        unsigned size = candidate.size();
+        for(unsigned i = 0;i < size;i++)
+        {
+			int id = candidate[i];
+			double jaccard = double(candidate_count[id])/double(word_num
+				[id]+word_size-candidate_count[id]);
+			if(jaccard>=threshold)
+				result.push_back(pair<unsigned,double>(id,jaccard));
+        }
+    }
+    else
+    {
+        for(unsigned i = 0;i < word_vec.size();i++)
+        {
+			double jaccard = double(candidate_count[i])/double(word_num
+				[i]+word_size-candidate_count[i]);
+			if(jaccard>=threshold)
+				result.push_back(pair<unsigned,double>(i,jaccard));
+        }
+    }
+
 	return SUCCESS;
 }
 
@@ -219,11 +330,6 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 	int len = strlen(query);
 	int th = len - q + 1 - q * threshold;
 
-	//cout << th << endl;
-
-	//const unsigned COUNT_SIZE = word_vec.size() + 100;
-
-	
 	//if(th > 0)
 	if(false)
 	{
@@ -241,7 +347,6 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 			set<Qgram>::iterator j = qgram_set.find(q);
 			if(j == qgram_set.end())
 				continue;
-			//cout << *it << endl;
 			vector<int>& inverted_list_entry = inverted_list[j->index];
 			for(vector<int>::iterator k = inverted_list_entry.begin();k != inverted_list_entry.end();++k)
 			{
@@ -260,7 +365,6 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 			int j = *it;
 			char* candidate_word = (word_vec[j]).word;
 			int ed = calED(query,candidate_word,threshold);
-			//cout << candidate_word << " " << ed << endl;
 			if(ed <= (int)threshold)
 			{
 				result.push_back(make_pair(*it,ed));
@@ -299,6 +403,8 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 
 void SimSearcher::printDebug(vector<pair<unsigned, unsigned> > &result)
 {
+	cout << "ED------------------------\n";
+
 	for(set<Qgram>::iterator it = qgram_set.begin();it != qgram_set.end();++it)
 	{
 		int index = it->index;
@@ -315,4 +421,20 @@ void SimSearcher::printDebug(vector<pair<unsigned, unsigned> > &result)
 	{
 		cout << it->first << ":" << word_vec[it->first].word << " ed: " << it->second << endl;
 	}
+
+	cout << "JAC-----------------------\n";
+
+	for(set<Qgram>::iterator it = word_set.begin();it != word_set.end();++it)
+	{
+		int index = it->index;
+		vector<int>& list = word_inverted_list[index];
+		cout << it->qgram << " : ";
+		for(vector<int>::iterator it2 = list.begin();it2 != list.end();++it2)
+		{
+			cout << *it2 << " , ";
+		}
+		cout << endl;
+	}
+
+	cout << "end-------------------------\n";
 }

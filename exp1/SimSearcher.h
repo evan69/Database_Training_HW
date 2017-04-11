@@ -55,7 +55,9 @@ public:
 
 	int createEntry(char* item, int id);
 	int generateQgrams(const char* word, int word_length, std::vector<char*>& qgrams);
+	int splitWord(const char* line, char c, std::vector<std::string>& words);
 	int insertInvertedList(char* qgram, int id);
+	int insertWordInvertedList(char* item, int id);
 	int createED(char *item, int id);
 	int createJCD(char *item, int id);
 

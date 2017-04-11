@@ -17,7 +17,7 @@ struct Entry
 };
 
 struct Qgram
-//a gram(for ED) or a whole line(for JAC)
+//a gram(for ED) or a word(for JAC)
 {
 	char* qgram;
 	int index;//inverted list index

@@ -19,6 +19,8 @@
 
 ## 三、设计思路
 
+### 数据结构设计
+
 首先，采用STL里的集合数据结构`std::set`来存储每一行的字符串，便于之后使用索引来获取：
 
 	vector<Entry> word_vec;
@@ -49,9 +51,28 @@
 	vector<vector<int> > word_inverted_list;
 	//inverted list for JAC
 
-这实际上是一个二维数组，其中第一维表示前述set里的gram或者word，第二维表示含有该gram或者word的全部字符串，是前述word_vec变量的索引。Qgram类的index成员变量是这个变量第一维的索引。
+这实际上是一个二维数组，其中第一维表示前述set里的gram或者word，第二维表示含有该gram或者word的全部字符串，是前述`word_vec`变量的索引。Qgram类的index成员变量是这个变量第一维的索引。
 
 这样建立倒排表之后，对于一个查询，首先按ED方法或者Jaccard方法的要求将其分割成gram或者word。然后，对每一个gram或者word，在set里查找出一个Qgram类型变量。然后用里面的index成员变量作为索引即可获取这一gram或word在倒排列表里列表项。根据前述对两个`vector<vector<int> >`变量的说明，列表项里的每一项都是`word_vec`向量的索引，从而获取到对应的字符串。
+
+### 算法实现
+
+#### ED
+对于ED方式，我尝试了两种计算方法。一是通过scan count方法，在倒排列表里找到与query的gram之交不小于|Q|-q+1-threshold*q的那些项作为candidate（|Q|是query的gram数量），再计算query与这些candidate的ED，选出达到threshold的项。但是按照这种思路写出的代码在OJ上运行评测虽然能够通过exp1测试集，结果却不甚理想。后来我又去掉scan count方法，直接遍历整个数据集计算ED，相比较之前的结果时间减少了10秒左右。另外，在ED计算中，我用到了以下几点优化：
+
+- 待计算的两个字符串的长度之差大于阈值threshold的，直接返回无穷大作为其ED
+- 在使用动态规划计算ED过程中，只计算了二维矩阵第一、第二维数值之差不大于阈值threshold的那些位置
+- 考虑到此动态规划过程是逐行计算的，配合上一条，每行至多计算2*threshold+1个值，于是可以让两个字符串更短的那个作为行数
+- 采用early termination，计算到某一行，若该行里所有值都大于阈值threshold，直接返回无穷大作为ED
+
+#### Jaccard
+对于Jaccard方式，两个集合的Jaccard距离可以由两个集合的大小以及它们交集的大小给出，而课上给出了两个估计交集大小的公式：
+
+- |R∩S| ≥ threshold *|R|
+
+- |R∩S| ≥ (|R|+|Smin|)* threshold / (1 + threshold)
+
+因此，可以取candidate的筛选阈值为max(threshold * |R|, (|R|+|Smin|) * threshold / (1 + threshold))，用scan count方法能同时计算出candidate以及query与数据集的Jaccard集合之交的大小。最后计算query和这些candidate的Jaccard距离（直接使用scan count计算出的交集大小），选出达到threshold的项即可。
 
 ## 四、实现难点
 
@@ -75,4 +96,5 @@
 	|test set|Memory Usage(GB)|Time Usage(s)|
 	|--------|----------------|-------------|
 	|exp1-final|1.826|254.252|
+
 

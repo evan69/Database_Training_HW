@@ -14,6 +14,8 @@ int dis[4096][4096];
 //used in DP calculation
 vector<vector<int> > gram_inverted_list;
 //inverted list for ED
+vector<vector<int> > gram_inverted_list_all;
+//inverted list for ED
 vector<vector<int> > word_inverted_list;
 //inverted list for JAC
 map<string,int> gram_set;
@@ -33,7 +35,7 @@ SimJoiner::SimJoiner() {
 SimJoiner::~SimJoiner() {
 }
 
-int split_gram(const string& str, int q, vector<string>& result, unsigned threshold)
+int split_gram(const string& str, int q, vector<string>& result, int num)
 {
 	result.clear();
 	int i = 0;
@@ -49,11 +51,11 @@ int split_gram(const string& str, int q, vector<string>& result, unsigned thresh
 		//cout << "entry:" << qgram_entry << endl;
  		result.push_back(qgram_entry);
 		i++;
-		if((unsigned)i > threshold * qq)
+		if(i > num)
 			break;
 	}
 	sort(result.begin(),result.end());
-    result.erase(unique(result.begin(),result.end()),result.end());
+    //result.erase(unique(result.begin(),result.end()),result.end());
 	return SUCCESS;
 }
 
@@ -144,10 +146,11 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
     result.clear();
     readin(filename2);
     int index = 0;
+    int num = threshold * qq + 1;
     for(vector<string>::iterator i = line_vec.begin();i != line_vec.end();++i)
     {
     	vector<string> split_result;
-    	split_gram(*i,qq,split_result,threshold);
+    	split_gram(*i,qq,split_result,MAX_NUM);
     	//int overlap_th = i->length() + 1 - qq - threshold * qq;
     	for(vector<string>::iterator j = split_result.begin();j != split_result.end();++j)
     	{
@@ -174,33 +177,39 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 			break;
 		}
 		int overlap_th = string_buf.size() + 1 - qq - threshold * qq;
+		//cout << "overlap:" << overlap_th << endl;
 		if(overlap_th > 0)
 		{
 			vector<string> split_result;
-			split_gram(string_buf,qq,split_result,threshold);
-			set<unsigned> candidate;
-			for(vector<string>::iterator j = split_result.begin();j != split_result.end();++j)
+			split_gram(string_buf,qq,split_result,MAX_NUM);
+			map<unsigned,int> candidate;
+			//for(vector<string>::iterator j = split_result.begin();j != split_result.end();++j)
+			for(unsigned j = 0;j < split_result.size();++j)
 	    	{
-	    		map<string,int>::iterator find_iter = gram_set.find(*j);
+	    		//map<string,int>::iterator find_iter = gram_set.find(*j);
+	    		map<string,int>::iterator find_iter = gram_set.find(split_result[j]);
 	    		if(find_iter != gram_set.end()) // find
 	    		{
-	    			vector<int>& tmp_list = gram_inverted_list[gram_set[*j]];
+	    			vector<int>& tmp_list = gram_inverted_list[gram_set[split_result[j]]];
 	    			for(vector<int>::iterator k = tmp_list.begin();k != tmp_list.end();++k)
 	    			{
 	    				//candidate.insert(make_pair(id,(unsigned)*k));
-	    				candidate.insert(*k);
+	    				candidate[*k]++;
 	    				//cout << "pair : " << id << " " << *k << endl;
 	    			}
 	    		}
 	    	}
-	    	for(set<unsigned>::iterator it = candidate.begin();it != candidate.end();++it)
+	    	for(map<unsigned,int>::iterator it = candidate.begin();it != candidate.end();++it)
 	    	{
-	    		unsigned ed = (unsigned)calED(string_buf,line_vec[*it],threshold);
+	    		//cout << it->first << "|" << it->second << endl;
+	    		if(it->second < overlap_th)
+	    			continue;
+	    		unsigned ed = (unsigned)calED(string_buf,line_vec[it->first],threshold);
 	    		if(ed <= threshold)
 	    		{
 	    			EDJoinResult r;
 	    			r.id1 = (unsigned)id;
-	    			r.id2 = *it;
+	    			r.id2 = it->first;
 	    			r.s = ed;
 	    			//cout << r.id1 << " & " << r.id2 << " : " << r.s << endl;
 	    			result.push_back(r);

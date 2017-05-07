@@ -140,6 +140,32 @@ int calED(const string& query, const string& entry, int th)
 	return dis[lens][lent];
 }
 
+double calJaccard(vector<string>& s1,vector<string>& s2)
+{
+	/*
+	s1.push_back("a");
+	s1.push_back("b");
+	s2.push_back("a");
+	s2.push_back("c");
+	*/
+	double size1 = s1.size();
+	double size2 = s2.size();
+	double common = 0;
+	unordered_map<string,int> umap;
+	for(vector<string>::iterator it = s1.begin();it != s1.end();it++)
+	{
+		umap[*it] = 1;
+	}
+	for(vector<string>::iterator it = s2.begin();it != s2.end();it++)
+	{
+		unordered_map<string,int>::iterator found = umap.find(*it);
+		if(found != umap.end())
+		common++;
+	}
+	cout << common/(size1+size2-common) << endl;
+	return common/(size1+size2-common);
+}
+
 int split_partition(const string& str, unsigned len, vector<string>& result, unsigned offset)
 {
 	result.clear();
@@ -379,6 +405,8 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 
 void SimJoiner::printDebug()
 {
+	//vector<string> a,b;
+	//calJaccard(a,b);
 	cout << "debug------------------------\n";
 	for(vector<string>::iterator it = line_vec.begin();it != line_vec.end();++it)
 	{

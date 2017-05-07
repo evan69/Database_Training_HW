@@ -11,6 +11,8 @@
 #include <map>
 #include <iostream>
 #include <algorithm>
+#include <cassert>
+#include <unordered_map>
 
 template <typename IDType, typename SimType>
 struct JoinResult {

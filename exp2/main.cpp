@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
     vector<JaccardJoinResult> resultJaccard;
 
     unsigned edThreshold = 1;
-    double jaccardThreshold = 0.85;
+    double jaccardThreshold = 0.5;
 
     joiner.joinJaccard(argv[1], argv[2], jaccardThreshold, resultJaccard);
     joiner.joinED(argv[1], argv[2], edThreshold, resultED);

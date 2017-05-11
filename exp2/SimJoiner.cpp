@@ -26,6 +26,10 @@ map<string,int> gram_set;
 map<string,int> word_set;
 //set of word for JAC
 */
+
+vector<vector<string> > jac_records;
+vector<vector<string> > jac_queries;
+
 struct Segment
 {
 	unsigned segNo;
@@ -45,6 +49,7 @@ Group partition_inverted_list2[512];
 
 unsigned qq = 3;
 unsigned tau;
+double jac_th;
 
 SimJoiner::SimJoiner() {
 	for (int i = 0; i < DIS_SIZE; i++)
@@ -59,6 +64,8 @@ SimJoiner::~SimJoiner() {
 int readin(const char* filename1, const char *filename2)
 // read in data
 {
+	line_vec.clear();
+	line_vec2.clear();
 	ifstream fin(filename1);
 	string string_buf;
 	while(!fin.eof())
@@ -89,6 +96,24 @@ int readin(const char* filename1, const char *filename2)
 	return SUCCESS;
 }
 
+void split(const string& str,char s,vector<string>&words)
+{
+	int len = str.length();
+	int start = 0;
+	for(int i = 0;i<len;i++)
+	{
+		if(str[i] == s)
+		{
+			words.push_back(str.substr(start,i-start));
+			while(str[i+1] == s)
+			{
+				i++;
+			}
+			start = i+1;
+		}
+	}
+	words.push_back(str.substr(start,len-start));
+}
 
 int calED(const string& query, const string& entry, int th)
 //calculate ED between query and entry
@@ -140,7 +165,7 @@ int calED(const string& query, const string& entry, int th)
 	return dis[lens][lent];
 }
 
-double calJaccard(vector<string>& s1,vector<string>& s2)
+double calJaccard(vector<string>& s1,unordered_map<string,int>& umap,vector<string>& s2)
 {
 	/*
 	s1.push_back("a");
@@ -151,18 +176,17 @@ double calJaccard(vector<string>& s1,vector<string>& s2)
 	double size1 = s1.size();
 	double size2 = s2.size();
 	double common = 0;
-	unordered_map<string,int> umap;
-	for(vector<string>::iterator it = s1.begin();it != s1.end();it++)
-	{
-		umap[*it] = 1;
-	}
 	for(vector<string>::iterator it = s2.begin();it != s2.end();it++)
 	{
 		unordered_map<string,int>::iterator found = umap.find(*it);
 		if(found != umap.end())
-		common++;
+		{
+			//cout << *it << endl;
+			common++;
+		}
 	}
-	cout << common/(size1+size2-common) << endl;
+	//cout << common << "|" << size1 << "|" << size2 << endl;
+	//cout << common/(size1+size2-common) << endl;
 	return common/(size1+size2-common);
 }
 
@@ -195,6 +219,7 @@ int split_partition(const string& str, unsigned len, vector<string>& result, uns
 
 int SimJoiner::joinJaccard(const char *filename1, const char *filename2, double threshold, vector<JaccardJoinResult> &result) {
     result.clear();
+    jac_th = threshold;
     return SUCCESS;
 }
 

@@ -29,6 +29,11 @@ map<string,int> word_set;
 
 vector<vector<string> > jac_records;
 vector<vector<string> > jac_queries;
+vector<vector<int> > word_inverted_list;
+//inverted list for JAC
+map<string,int> word_set;
+//set of word for JAC
+unordered_map<string,int> idf;
 
 struct Segment
 {
@@ -50,6 +55,11 @@ Group partition_inverted_list2[512];
 unsigned qq = 3;
 unsigned tau;
 double jac_th;
+
+bool cmp_jac(const string& a,const string& b)
+{
+	return idf[a] < idf[b];
+}
 
 SimJoiner::SimJoiner() {
 	for (int i = 0; i < DIS_SIZE; i++)
@@ -113,6 +123,34 @@ void split(const string& str,char s,vector<string>&words)
 		}
 	}
 	words.push_back(str.substr(start,len-start));
+}
+
+void readinJac(string filename)
+{
+	ifstream fin(filename);
+	string r;
+	unsigned i = 0;
+	vector<string> tp;
+	while(getline(fin,r))
+	{
+		jac_records.push_back(tp);
+		split(r,' ',jac_records[i]);
+		sort(jac_records[i].begin(),jac_records[i].end(),cmp_jac);
+		jac_records[i].erase(unique(jac_records[i].begin(),jac_records[i].end()),jac_records[i].end());
+		unsigned prefix_len = floor((1 - jac_th) * jac_records[i].size() + 1);
+		for(unsigned j = 0;j < prefix_len;j++)
+		{
+			map<string,int>::iterator find_iter = word_set.find(jac_records[i][j]);
+			if(find_iter == word_set.end()) //not find
+			{
+				word_set[jac_records[i][j]] = word_inverted_list.size();
+				word_inverted_list.push_back(vector<int>());
+			}
+			word_inverted_list[word_set[jac_records[i][j]]].push_back(i);
+		}
+		i++;
+	}
+	fin.close();
 }
 
 int calED(const string& query, const string& entry, int th)
@@ -217,10 +255,95 @@ int split_partition(const string& str, unsigned len, vector<string>& result, uns
 	return SUCCESS;
 }
 
+void calIdf(string filename)
+{
+	ifstream fin(filename);
+	string r;
+	vector<string> tp;
+	while(getline(fin,r))
+	{
+		//cout << "hehe\n";
+		tp.clear();
+		split(r,' ',tp);
+		sort(tp.begin(),tp.end());
+		tp.erase(unique(tp.begin(),tp.end()),tp.end());
+		//cout << "hehe\n";
+		for(int i = 0;i < (int)tp.size();i++)
+		{
+			//cout << i << endl;
+			unordered_map<string,int>::iterator find_iter = idf.find(tp[i]);
+			if(find_iter == idf.end()) //not find
+			{
+				//find_iter->second = 1;
+				idf[tp[i]] = 1;
+			}
+			else
+			{
+				find_iter->second++;
+			}
+		}
+	}
+	fin.close();
+}
+
 int SimJoiner::joinJaccard(const char *filename1, const char *filename2, double threshold, vector<JaccardJoinResult> &result) {
-    result.clear();
-    jac_th = threshold;
-    return SUCCESS;
+	result.clear();
+	jac_th = threshold;
+	calIdf(filename1);
+	calIdf(filename2);
+	//cout << "caoo\n" << endl;
+	readinJac(filename2);
+
+	ifstream fin(filename1);
+	string r;
+	unsigned i = 0;
+
+	while(getline(fin,r))
+	{
+		vector<string> tp;
+		set<int> candidate;
+		split(r,' ',tp);
+		sort(tp.begin(),tp.end(),cmp_jac);
+		tp.erase(unique(tp.begin(),tp.end()),tp.end());
+		unsigned prefix_len = floor((1 - jac_th) * tp.size() + 1);
+		for(unsigned j = 0;j < prefix_len;j++)
+		{
+			map<string,int>::iterator find_iter = word_set.find(tp[j]);
+			if(find_iter != word_set.end()) //find
+			{
+				vector<int>& tmp_list = word_inverted_list[find_iter->second];
+				for(vector<int>::iterator k = tmp_list.begin();k != tmp_list.end();++k)
+				{
+					candidate.insert(*k);
+				}
+			}
+		}
+		//cout << "candidate: ";
+		//cout << candidate.size() << endl;
+		unordered_map<string,int> umap;
+		for(vector<string>::iterator it = tp.begin();it != tp.end();it++)
+		{
+			umap[*it] = 1;
+		}
+
+		for(set<int>::iterator it = candidate.begin();it != candidate.end();it++)
+		{
+			//cout << i << " " << *it << endl;
+			double jac = calJaccard(tp,umap,jac_records[*it]);
+			if(jac >= threshold)
+			{
+				//cout << i << " " << *it << " jac: " << jac << endl;
+				JaccardJoinResult r;
+				r.id1 = i;
+				r.id2 = *it;
+				r.s = jac;
+				result.push_back(r);
+			}
+		}
+		i++;
+	}
+	fin.close();
+	return SUCCESS;
 }
 
 vector<int> lessTau;

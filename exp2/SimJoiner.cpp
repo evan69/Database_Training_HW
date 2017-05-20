@@ -14,18 +14,6 @@ vector<string> line_vec2;
 //vector of lines in input file
 int dis[4096][4096];
 //used in DP calculation
-/*
-vector<vector<int> > gram_inverted_list;
-//inverted list for ED
-vector<vector<int> > gram_inverted_list_all;
-//inverted list for ED
-vector<vector<int> > word_inverted_list;
-//inverted list for JAC
-map<string,int> gram_set;
-//set of gram for ED
-map<string,int> word_set;
-//set of word for JAC
-*/
 
 vector<vector<string> > jac_records;
 vector<vector<string> > jac_queries;
@@ -107,6 +95,7 @@ int readin(const char* filename1, const char *filename2)
 }
 
 void split(const string& str,char s,vector<string>&words)
+// split line into words used in Jaccard
 {
 	int len = str.length();
 	int start = 0;
@@ -204,13 +193,9 @@ int calED(const string& query, const string& entry, int th)
 }
 
 double calJaccard(vector<string>& s1,unordered_map<string,int>& umap,vector<string>& s2)
+// calculate Jaccard distance
+// umap : unordered map of string s1
 {
-	/*
-	s1.push_back("a");
-	s1.push_back("b");
-	s2.push_back("a");
-	s2.push_back("c");
-	*/
 	double size1 = s1.size();
 	double size2 = s2.size();
 	double common = 0;
@@ -219,33 +204,28 @@ double calJaccard(vector<string>& s1,unordered_map<string,int>& umap,vector<stri
 		unordered_map<string,int>::iterator found = umap.find(*it);
 		if(found != umap.end())
 		{
-			//cout << *it << endl;
 			common++;
+			// intersection ++
 		}
 	}
-	//cout << common << "|" << size1 << "|" << size2 << endl;
-	//cout << common/(size1+size2-common) << endl;
 	return common/(size1+size2-common);
 }
 
 int split_partition(const string& str, unsigned len, vector<string>& result, unsigned offset)
+// split using partition method for ED
 {
 	result.clear();
 	unsigned i = 0;
 	unsigned pos = offset;
-	//unsigned len = str.length();
 	unsigned length1 = floor(1.0 * len / (tau + 1));
 	unsigned length2 = ceil(1.0 * len / (tau + 1));
-	//assert(length1 > 0 && length2 > 0);
 	unsigned num = len % (tau + 1);
-	//assert(len == length2 * num + (tau + 1 - num) * length1);
 	while(i < tau + 1)
 	{
 		unsigned real_len = (i < num) ? length2 : length1;
 		string partition_entry = string(real_len,'*');
 		for(unsigned j = 0;j < real_len;j++)
 		{
-			//assert(pos < str.length());
 			partition_entry[j] = str[pos];
 			pos ++;
 		}
@@ -256,30 +236,29 @@ int split_partition(const string& str, unsigned len, vector<string>& result, uns
 }
 
 void calIdf(string filename)
+// calculate tf
 {
 	ifstream fin(filename);
 	string r;
 	vector<string> tp;
 	while(getline(fin,r))
 	{
-		//cout << "hehe\n";
 		tp.clear();
 		split(r,' ',tp);
 		sort(tp.begin(),tp.end());
 		tp.erase(unique(tp.begin(),tp.end()),tp.end());
-		//cout << "hehe\n";
 		for(int i = 0;i < (int)tp.size();i++)
 		{
-			//cout << i << endl;
 			unordered_map<string,int>::iterator find_iter = idf.find(tp[i]);
 			if(find_iter == idf.end()) //not find
 			{
-				//find_iter->second = 1;
 				idf[tp[i]] = 1;
+				// set tf to 1
 			}
 			else
 			{
 				find_iter->second++;
+				// add tf value
 			}
 		}
 	}
@@ -291,7 +270,6 @@ int SimJoiner::joinJaccard(const char *filename1, const char *filename2, double 
 	jac_th = threshold;
 	calIdf(filename1);
 	calIdf(filename2);
-	//cout << "caoo\n" << endl;
 	readinJac(filename2);
 
 	ifstream fin(filename1);
@@ -315,11 +293,10 @@ int SimJoiner::joinJaccard(const char *filename1, const char *filename2, double 
 				for(vector<int>::iterator k = tmp_list.begin();k != tmp_list.end();++k)
 				{
 					candidate.insert(*k);
+					// add to candidate
 				}
 			}
 		}
-		//cout << "candidate: ";
-		//cout << candidate.size() << endl;
 		unordered_map<string,int> umap;
 		for(vector<string>::iterator it = tp.begin();it != tp.end();it++)
 		{
@@ -328,11 +305,9 @@ int SimJoiner::joinJaccard(const char *filename1, const char *filename2, double 
 
 		for(set<int>::iterator it = candidate.begin();it != candidate.end();it++)
 		{
-			//cout << i << " " << *it << endl;
 			double jac = calJaccard(tp,umap,jac_records[*it]);
 			if(jac >= threshold)
 			{
-				//cout << i << " " << *it << " jac: " << jac << endl;
 				JaccardJoinResult r;
 				r.id1 = i;
 				r.id2 = *it;
@@ -371,13 +346,8 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
     index = 0;
     for(vector<string>::iterator i = line_vec.begin();i != line_vec.end();++i)
     {
-    	if(i->length() <= tau)
-    	{
-    		//assert(false);
-    	}
     	vector<string> split_result;
     	split_partition(*i,i->length(),split_result,0);
-    	//assert(split_result.size() == tau + 1);
     	Group& lengthGr = partition_inverted_list[i->length()];
     	lengthGr.used = true;
     	for(unsigned j = 0;j < split_result.size();j++)
@@ -405,10 +375,6 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 		}
 		
 		set<int> candidate;
-		if(string_buf.length() <= tau)
-		{
-			//assert(false);
-		}
 		unsigned lo = string_buf.length() - tau;
 		unsigned hi = string_buf.length();
 		for(unsigned len = lo;len <= hi;len++)
@@ -420,7 +386,6 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 			{
 				vector<string> split_result;
 				split_partition(string_buf,len,split_result,offset);
-				//assert(split_result.size() == tau + 1);
 				for(unsigned index2 = 0;index2 < tau + 1;index2++)
 				{
 					Segment& segs = lengthGr.segs[index2];
@@ -432,7 +397,6 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 						vector<int>& vec = segs.invList[a];
 						for(vector<int>::iterator it = vec.begin();it != vec.end();it++)
 						{
-							//assert(line_vec[*it].length() <= hi);
 							candidate.insert(*it);
 						}
 					}
@@ -449,7 +413,6 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 				r.id2 = (unsigned)id;
 				r.id1 = (unsigned)*it;
 				r.s = ed;
-				//cout << r.id1 << " & " << r.id2 << " : " << r.s << endl;
 				result.push_back(r);
 			}
 		}
@@ -461,13 +424,8 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 	index = 0;
     for(vector<string>::iterator i = line_vec2.begin();i != line_vec2.end();++i)
     {
-    	if(i->length() <= tau)
-    	{
-    		//assert(false);
-    	}
     	vector<string> split_result;
     	split_partition(*i,i->length(),split_result,0);
-    	//assert(split_result.size() == tau + 1);
     	Group& lengthGr = partition_inverted_list2[i->length()];
     	lengthGr.used = true;
     	for(unsigned j = 0;j < split_result.size();j++)
@@ -495,10 +453,6 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 		}
 		
 		set<int> candidate;
-		if(string_buf.length() <= tau)
-		{
-			//assert(false);
-		}
 		unsigned lo = string_buf.length() - tau;
 		unsigned hi = string_buf.length();
 		for(unsigned len = lo;len < hi;len++)
@@ -510,7 +464,6 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 			{
 				vector<string> split_result;
 				split_partition(string_buf,len,split_result,offset);
-				//assert(split_result.size() == tau + 1);
 				for(unsigned index2 = 0;index2 < tau + 1;index2++)
 				{
 					Segment& segs = lengthGr.segs[index2];
@@ -538,7 +491,6 @@ int SimJoiner::joinED(const char *filename1, const char *filename2, unsigned thr
 				r.id1 = (unsigned)id;
 				r.id2 = (unsigned)*it;
 				r.s = ed;
-				//cout << r.id1 << " & " << r.id2 << " : " << r.s << endl;
 				result.push_back(r);
 			}
 		}
